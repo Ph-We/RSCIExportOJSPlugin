@@ -157,7 +157,7 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
 
         foreach ($publications as $publication)
         {
-            if ($this->_exportSettings['isExportSections'] && ($lastSectionId !== $publication->getData('sectionId')()))
+            if ($this->_exportSettings['isExportSections'] && ($lastSectionId !== $publication->getData('sectionId')))
             {
                 $articlesNode->appendChild($this->_createSectionNode($doc, $publication, $langs));
             }
