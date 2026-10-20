@@ -203,6 +203,12 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
             $articleNode->appendChild($doc->createElement('artType', 'RAR'));
         }
 
+        // Language of the article (the submission language in OJS), e.g. <langPubl>RUS</langPubl>.
+        if ($publication->getData('locale'))
+        {
+            $articleNode->appendChild($doc->createElement('langPubl', $this->_convertLocaleToISO639($publication->getData('locale'))));
+        }
+
         $authorsNode = $doc->createElement('authors');
         $authors = $publication->getData('authors');
         $authorCount = 1;
@@ -439,6 +445,11 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
         {
             $fileNode = $doc->createElement('file', $file['name']);
             $fileNode->setAttribute('desc', 'fullText');
+            // Language of this full text (the galley language in OJS), e.g. lang="RUS".
+            if ($file['locale'] !== '')
+            {
+                $fileNode->setAttribute('lang', $this->_convertLocaleToISO639($file['locale']));
+            }
             $filesNode->appendChild($fileNode);
         }
 
