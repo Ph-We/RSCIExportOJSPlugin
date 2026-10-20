@@ -9,6 +9,6 @@
 <version>
     <application>rsciexport</application>
     <type>plugins.importexport</type>
-    <release>0.1.4.0</release>
-    <date>2026-05-27</date>
+    <release>0.1.4.1</release>
+    <date>2026-10-20</date>
 </version>
