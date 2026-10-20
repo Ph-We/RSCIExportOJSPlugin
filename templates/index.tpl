@@ -38,6 +38,23 @@
 				{fbvFormButtons submitText="plugins.importexport.rsciexport.export.issue" hideCancel="true"}
 				{/fbvFormArea}
 			</form>
+
+			{* Report of the last export: what did not get into the archive and why *}
+			{if $lastExportReport}
+				<div id="rsciexportLastReport">
+					<h3>{translate key="plugins.importexport.rsciexport.report.title"}</h3>
+					<p>{translate key="plugins.importexport.rsciexport.report.issue" issue=$lastExportReport.issue|escape date=$lastExportReport.date|date_format:$datetimeFormatShort}</p>
+					{if $lastExportReport.problems}
+						<ul>
+							{foreach from=$lastExportReport.problems item=problem}
+								<li>{$problem|escape}</li>
+							{/foreach}
+						</ul>
+					{else}
+						<p>{translate key="plugins.importexport.rsciexport.report.noProblems"}</p>
+					{/if}
+				</div>
+			{/if}
 		</div>
 	</div>
 {/block}

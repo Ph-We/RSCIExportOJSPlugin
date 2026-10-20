@@ -17,6 +17,7 @@ use APP\submission\Submission;
 use APP\template\TemplateManager;
 use PKP\config\Config;
 use PKP\context\Context;
+use PKP\core\Core;
 use PKP\core\JSONMessage;
 use PKP\core\PKPRequest;
 use PKP\core\Registry;
@@ -58,6 +59,8 @@ class RSCIExportPlugin extends ImportExportPlugin
         switch (array_shift($args)) {
             case 'index':
             case '':
+                // Report of the last export (see createIssueZip()), shown under the export form.
+                $templateMgr->assign('lastExportReport', $this->getSetting($journal->getId(), 'lastExportReport'));
                 $templateMgr->display($this->getTemplateResource('index.tpl'));
                 break;
             case 'exportIssue':
@@ -143,6 +146,16 @@ class RSCIExportPlugin extends ImportExportPlugin
         $fileManager = new FileManager();
         $zipPath = $this->createIssueZip($issueId, $xml);
 
+        // A short pop-up note that the export had problems; the list itself is on the plugin page,
+        // because pop-up notes disappear after a few seconds and show plain text only.
+        if (!empty($this->_exportProblems))
+        {
+            $request = Registry::get('request');
+            $notificationManager = new NotificationManager();
+            $notificationManager->createTrivialNotification($request->getUser()->getId(), Notification::NOTIFICATION_TYPE_WARNING,
+                array('contents' => __('plugins.importexport.rsciexport.report.notification', array('count' => count($this->_exportProblems)))));
+        }
+
         // UPLOAD:
         $fileManager->downloadByPath($zipPath);
         $fileManager->rmtree($this->getExportPath());
@@ -161,10 +174,19 @@ class RSCIExportPlugin extends ImportExportPlugin
         $fileManager->writeFile($xmlFileName, $xml);
 
         $issue = Repo::issue()->get($issueId);
+        $journal = DAORegistry::getDAO('JournalDAO')->getById($issue->getJournalId());
+        // What did not get into the archive and why: shown on the plugin page and in the console.
+        $problems = array();
+
         // Copy the cover from disk under the same name the XML refers to (see getIssueCoverToRSCI()).
         $cover = ArticleRSCIXmlFilter::getIssueCoverToRSCI($issue);
+        $coverImage = $issue->getLocalizedData('coverImage', $journal->getPrimaryLocale());
         if ($cover)
-            $fileManager->copyFile($cover['path'], $this->getExportPath() . $cover['name']);
+            $this->_copyToArchive($cover['path'], $cover['name'], $fileManager, $problems);
+        elseif ($coverImage)
+            $problems[] = __('plugins.importexport.rsciexport.problem.coverFileMissing', array('file' => $coverImage));
+        else
+            $problems[] = __('plugins.importexport.rsciexport.problem.noCover');
 
         $submissionsIterator = Repo::submission()->getCollector()
             ->filterByContextIds([$issue->getData('journalId')])
@@ -179,13 +201,34 @@ class RSCIExportPlugin extends ImportExportPlugin
 
         // Setting "Full texts in the archive": the same value the XML filter gets in exportIssue().
         $galleySelection = $this->getSetting($issue->getData('journalId'), 'galleySelection');
+        $languageNames = $journal->getSupportedSubmissionLocaleNames();
+        // In page order, as in the XML: the report reads top to bottom, and if two articles
+        // have the same pages, the first one keeps its file.
+        usort($submissions, fn ($a, $b) => (int) $a->getCurrentPublication()->getStartingPage() <=> (int) $b->getCurrentPublication()->getStartingPage());
+        $articleByFileName = array();
         foreach ($submissions as $submission)
         {
+            $publication = $submission->getCurrentPublication();
+            $article = $this->_describeArticle($publication, $journal);
             // Copy the article's full texts from disk under the same names the XML refers to
             // (see getPublicationFilesToRSCI()).
-            foreach (ArticleRSCIXmlFilter::getPublicationFilesToRSCI($submission->getCurrentPublication(), $galleySelection) as $file)
+            $fileProblems = array();
+            foreach (ArticleRSCIXmlFilter::getPublicationFilesToRSCI($publication, $galleySelection, $fileProblems) as $file)
             {
-                $fileManager->copyFile($file['path'], $this->getExportPath() . $file['name']);
+                // Two articles with the same pages get the same file name: keep the first file
+                // instead of silently replacing it, and report it.
+                if (isset($articleByFileName[$file['name']]))
+                {
+                    $problems[] = __('plugins.importexport.rsciexport.problem.sameName',
+                        array('article' => $article, 'file' => $file['name'], 'otherArticle' => $articleByFileName[$file['name']]));
+                    continue;
+                }
+                $articleByFileName[$file['name']] = $article;
+                $this->_copyToArchive($file['path'], $file['name'], $fileManager, $problems);
+            }
+            foreach ($fileProblems as $fileProblem)
+            {
+                $problems[] = $this->_describeFileProblem($fileProblem, $article, $languageNames);
             }
         }
 
@@ -204,7 +247,86 @@ class RSCIExportPlugin extends ImportExportPlugin
         }
         $zip->close();
 
+        // Keep the report: the web interface shows it on the plugin page, the CLI prints it.
+        $this->_exportProblems = $problems;
+        $this->updateSetting($issue->getJournalId(), 'lastExportReport', array(
+            'issue' => $issue->getIssueIdentification(),
+            'date' => Core::getCurrentDate(),
+            'problems' => $problems,
+        ), 'object');
+
         return $zipPath;
+    }
+
+    /**
+     * Problems found by the last createIssueZip() call (messages for the export report).
+     * @var string[]
+     */
+    protected $_exportProblems = array();
+
+    /**
+     * Copies a file into the export directory. If it fails, adds the reason to the report
+     * instead of skipping the file silently.
+     * @param $sourcePath string file on disk
+     * @param $nameInArchive string
+     * @param $fileManager FileManager
+     * @param $problems string[] report messages
+     */
+    protected function _copyToArchive($sourcePath, $nameInArchive, $fileManager, &$problems)
+    {
+        if (!is_file($sourcePath))
+        {
+            $problems[] = __('plugins.importexport.rsciexport.problem.fileNotFound', array('file' => $nameInArchive, 'path' => $sourcePath));
+        }
+        elseif (!$fileManager->copyFile($sourcePath, $this->getExportPath() . $nameInArchive))
+        {
+            $error = error_get_last();
+            $problems[] = __('plugins.importexport.rsciexport.problem.copyFailed', array('file' => $nameInArchive, 'reason' => $error['message'] ?? ''));
+        }
+    }
+
+    /**
+     * How an article is named in the report: its pages and the beginning of its title.
+     * @param $publication Publication
+     * @param $journal Context
+     * @return string
+     */
+    protected function _describeArticle($publication, $journal)
+    {
+        $title = mb_strimwidth((string) $publication->getLocalizedTitle($journal->getPrimaryLocale()), 0, 60, '…');
+        $pages = (string) $publication->getData('pages');
+        return $pages !== ''
+            ? __('plugins.importexport.rsciexport.problem.article', array('pages' => $pages, 'title' => $title))
+            : __('plugins.importexport.rsciexport.problem.articleNoPages', array('id' => $publication->getData('submissionId'), 'title' => $title));
+    }
+
+    /**
+     * Turns a problem found while choosing an article's full texts (see getPublicationFilesToRSCI())
+     * into a report message.
+     * @param $fileProblem array
+     * @param $article string see _describeArticle()
+     * @param $languageNames array locale => language name
+     * @return string
+     */
+    protected function _describeFileProblem($fileProblem, $article, $languageNames)
+    {
+        $languageName = fn ($locale) => $languageNames[$locale] ?? $locale;
+        switch ($fileProblem['type'])
+        {
+            case 'noPdf':
+                return __('plugins.importexport.rsciexport.problem.noPdf', array('article' => $article));
+            case 'otherLanguage':
+                return __('plugins.importexport.rsciexport.problem.otherLanguage', array(
+                    'article' => $article,
+                    'wanted' => implode(' / ', array_map($languageName, array_unique(array_filter($fileProblem['wanted'])))),
+                    'taken' => $languageName($fileProblem['taken']),
+                ));
+            case 'duplicateLanguage':
+                return __('plugins.importexport.rsciexport.problem.duplicateLanguage', array('article' => $article, 'language' => $languageName($fileProblem['locale'])));
+            case 'fileMissing':
+                return __('plugins.importexport.rsciexport.problem.galleyFileMissing', array('article' => $article, 'path' => $fileProblem['path']));
+        }
+        return $article;
     }
 
     /**
@@ -298,6 +420,14 @@ class RSCIExportPlugin extends ImportExportPlugin
         $this->_exportContextId = $journal->getId();
         $exportXml = $this->exportIssue($issue->getId(), $journal);
         $zipPath = $this->createIssueZip($issue->getId(), $exportXml);
+
+        // Export report (see createIssueZip()).
+        if (!empty($this->_exportProblems)) {
+            echo __('plugins.importexport.rsciexport.report.title') . ":\n";
+            foreach ($this->_exportProblems as $problem) {
+                echo ' - ' . $problem . "\n";
+            }
+        }
 
         $fileManager = new FileManager();
         if (!$fileManager->copyFile($zipPath, $zipFile)) {

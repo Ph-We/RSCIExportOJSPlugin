@@ -58,3 +58,48 @@ msgstr "In the language of the article"
 
 msgid "plugins.importexport.rsciexport.settings.form.galleySelection.all"
 msgstr "All language versions"
+
+msgid "plugins.importexport.rsciexport.report.title"
+msgstr "Last export report"
+
+msgid "plugins.importexport.rsciexport.report.issue"
+msgstr "Issue: {$issue}, {$date}."
+
+msgid "plugins.importexport.rsciexport.report.noProblems"
+msgstr "No problems found: the cover and the full texts of all articles are in the archive."
+
+msgid "plugins.importexport.rsciexport.report.notification"
+msgstr "Problems found during the export: {$count}. See the list on the \"RSCI XML Export\" plugin page, \"Issues\" tab."
+
+msgid "plugins.importexport.rsciexport.problem.noCover"
+msgstr "The issue has no cover."
+
+msgid "plugins.importexport.rsciexport.problem.coverFileMissing"
+msgstr "A cover is set in OJS, but its file ({$file}) is not on the server, so it is not in the archive."
+
+msgid "plugins.importexport.rsciexport.problem.noPdf"
+msgstr "{$article}: no PDF galley, so the full text is not in the archive."
+
+msgid "plugins.importexport.rsciexport.problem.otherLanguage"
+msgstr "{$article}: no PDF in \"{$wanted}\", the PDF in \"{$taken}\" was taken. Check the language of the article and of the galleys."
+
+msgid "plugins.importexport.rsciexport.problem.duplicateLanguage"
+msgstr "{$article}: several PDF galleys in \"{$language}\", the first one was taken."
+
+msgid "plugins.importexport.rsciexport.problem.fileNotFound"
+msgstr "{$file}: the file is not on the server ({$path}), so it is not in the archive."
+
+msgid "plugins.importexport.rsciexport.problem.copyFailed"
+msgstr "{$file}: could not be copied into the archive ({$reason})."
+
+msgid "plugins.importexport.rsciexport.problem.sameName"
+msgstr "{$article}: the file {$file} is already used for {$otherArticle} (same pages?), the archive keeps that article's file. Correct the pages."
+
+msgid "plugins.importexport.rsciexport.problem.article"
+msgstr "pp. {$pages} \"{$title}\""
+
+msgid "plugins.importexport.rsciexport.problem.articleNoPages"
+msgstr "\"{$title}\" (ID {$id}, no pages)"
+
+msgid "plugins.importexport.rsciexport.problem.galleyFileMissing"
+msgstr "{$article}: the PDF galley file is not on the server ({$path}), so this galley was skipped."
