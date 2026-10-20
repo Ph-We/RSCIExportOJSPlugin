@@ -14,6 +14,7 @@ namespace APP\plugins\importexport\rsciexport\filter;
 use APP\core\Application;
 use APP\core\Request;
 use APP\facades\Repo;
+use APP\file\PublicFileManager;
 use APP\issue\Issue;
 use APP\journal\Journal;
 use APP\notification\NotificationManager;
@@ -132,11 +133,17 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
         $issueNode->appendChild($doc->createElement('pages', $this->_getIssuePages($issue)));
         $issueNode->appendChild($doc->createElement('dateUni', $issue->getYear()));
 
-        $filesNode = $doc->createElement('files');
-        $coverFileNode = $doc->createElement('file', $issue->getLocalizedCoverImage());
-        $coverFileNode->setAttribute('desc', 'cover');
-        $filesNode->appendChild($coverFileNode);
-        $issueNode->appendChild($filesNode);
+        // The cover goes into the archive as "cover.<ext>" (see getIssueCoverToRSCI()),
+        // so the XML refers to that name. No cover - no <files> block for the issue.
+        $cover = self::getIssueCoverToRSCI($issue);
+        if ($cover)
+        {
+            $filesNode = $doc->createElement('files');
+            $coverFileNode = $doc->createElement('file', $cover['name']);
+            $coverFileNode->setAttribute('desc', 'cover');
+            $filesNode->appendChild($coverFileNode);
+            $issueNode->appendChild($filesNode);
+        }
         $issueNode->appendChild($this->_createArticlesNode($doc, $issue, $langs));
 
         return $issueNode;
@@ -430,6 +437,46 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
         $filesNode->appendChild($fileNode);
 
         return $filesNode;
+    }
+
+    /**
+     * Locates the issue cover on disk and gives the name it gets in the archive.
+     *
+     * The file is read from the journal's public files directory instead of being
+     * downloaded by its URL: a URL with spaces or Cyrillic letters in the file name
+     * could not be downloaded, and the cover silently went missing from the archive.
+     * The cover in the journal's primary language is preferred, so the result does not
+     * depend on the interface language of the person running the export. In the archive
+     * the cover is always called "cover.<original extension>".
+     *
+     * Used both for the XML (<file desc="cover">) and for building the archive,
+     * so the two always agree.
+     *
+     * @param $issue Issue
+     * @return array|null ['path' => file on disk, 'name' => name in the archive],
+     *  or null if the issue has no cover or its file is not on disk.
+     */
+    static public function getIssueCoverToRSCI($issue)
+    {
+        $journal = Application::getContextDAO()->getById($issue->getJournalId());
+        $coverImage = $issue->getLocalizedData('coverImage', $journal->getPrimaryLocale());
+        if (empty($coverImage))
+        {
+            return null;
+        }
+
+        $publicFileManager = new PublicFileManager();
+        $path = $publicFileManager->getContextFilesPath($issue->getJournalId()) . '/' . $coverImage;
+        if (!is_file($path))
+        {
+            return null;
+        }
+
+        $extension = strtolower(pathinfo($coverImage, PATHINFO_EXTENSION));
+        return array(
+            'path' => $path,
+            'name' => 'cover' . ($extension !== '' ? '.' . $extension : ''),
+        );
     }
 
     /**

@@ -27,6 +27,7 @@ use APP\notification\Notification;
 use PKP\plugins\ImportExportPlugin;
 use APP\notification\NotificationManager;
 use APP\plugins\importexport\rsciexport\classes\form\RSCIExportSettingsForm;
+use APP\plugins\importexport\rsciexport\filter\ArticleRSCIXmlFilter;
 use PKP\submission\PKPSubmission;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use ZipArchive;
@@ -159,11 +160,10 @@ class RSCIExportPlugin extends ImportExportPlugin
         $fileManager->writeFile($xmlFileName, $xml);
 
         $issue = Repo::issue()->get($issueId);
-        $coverUrl = $issue->getLocalizedCoverImageUrl();
-        $coverUrlParts = explode('/', $coverUrl);
-        $coverName = end($coverUrlParts);
-        if ($coverUrl != "")
-            $fileManager->copyFile($coverUrl, $this->getExportPath() . $coverName);
+        // Copy the cover from disk under the same name the XML refers to (see getIssueCoverToRSCI()).
+        $cover = ArticleRSCIXmlFilter::getIssueCoverToRSCI($issue);
+        if ($cover)
+            $fileManager->copyFile($cover['path'], $this->getExportPath() . $cover['name']);
 
         $submissionsIterator = Repo::submission()->getCollector()
             ->filterByContextIds([$issue->getData('journalId')])
