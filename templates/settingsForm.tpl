@@ -23,6 +23,9 @@
     {fbvFormSection list="true"}
     {fbvElement type="checkbox" id="exportArtTypeFromSectionAbbrev" label="plugins.importexport.rsciexport.settings.form.exportArtTypeFromSectionAbbrev" checked=$exportArtTypeFromSectionAbbrev|compare:true}
     {/fbvFormSection}
+    {fbvFormSection label="plugins.importexport.rsciexport.settings.form.galleySelection" description="plugins.importexport.rsciexport.settings.form.galleySelection.description"}
+    {fbvElement type="select" id="galleySelection" from=$galleySelectionOptions selected=$galleySelection translate=false size=$fbvStyles.size.MEDIUM}
+    {/fbvFormSection}
     {/fbvFormArea}
     {fbvFormButtons submitText="common.save"}
 </form>

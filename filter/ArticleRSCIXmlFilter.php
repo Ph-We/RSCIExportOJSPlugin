@@ -441,7 +441,7 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
 
         // Full text: the same file names that go into the archive (see getPublicationFilesToRSCI()).
         // No PDF galley - no <file desc="fullText"> element.
-        foreach (self::getPublicationFilesToRSCI($publication) as $file)
+        foreach (self::getPublicationFilesToRSCI($publication, $this->_exportSettings['galleySelection'] ?? null) as $file)
         {
             $fileNode = $doc->createElement('file', $file['name']);
             $fileNode->setAttribute('desc', 'fullText');
@@ -503,9 +503,18 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
      * extension for files migrated from old OJS versions with a generic type). HTML
      * galleys and galleys that are only a link to another site are skipped: previously
      * the first galley of any kind was taken, so an HTML file went to the archive instead
-     * of the PDF, and a link galley broke the whole export. Of the PDF galleys, the one in
-     * the language of the article is taken; if there is none, the first PDF galley in the
-     * order set in OJS.
+     * of the PDF, and a link galley broke the whole export.
+     *
+     * Which PDF galleys are taken depends on the plugin setting "Full texts in the archive"
+     * ($selection):
+     * - "article" (default, also when the setting was never saved): one PDF in the language
+     *   of the article;
+     * - a language code, e.g. "en": one PDF in that language; if there is none, in the
+     *   language of the article;
+     * - "all": one PDF for every language (if there are two PDFs in the same language,
+     *   the first one).
+     * When no PDF is in the wanted language, the first PDF galley in the order set in OJS
+     * is taken, so an article with a PDF always gets a full text.
      *
      * The name in the archive is "<pages>_<galley language>.pdf", e.g. "4-33_ru.pdf", or
      * "<article ID>_<galley language>.pdf" if the pages are not filled in. Original file
@@ -514,14 +523,14 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
      * uploader's login, spaces and Cyrillic letters.
      *
      * Used both for the XML (<file desc="fullText">) and for building the archive, so the
-     * two always agree. Returns a list, so that more language versions can be added later
-     * without changing the callers.
+     * two always agree.
      *
      * @param $publication Publication
+     * @param $selection string|null "article", a language code (e.g. "en") or "all"
      * @return array list of ['path' => file on disk, 'name' => name in the archive,
      *  'locale' => galley language]; empty if the article has no PDF galley.
      */
-    static public function getPublicationFilesToRSCI($publication)
+    static public function getPublicationFilesToRSCI($publication, $selection = null)
     {
         $pdfGalleys = array();
         /** @var Galley $galley */
@@ -539,14 +548,42 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
             return array();
         }
 
-        $chosen = $pdfGalleys[0];
-        foreach ($pdfGalleys as $galley)
+        if ($selection === 'all')
         {
-            if ($galley->getLocale() === $publication->getData('locale'))
+            // One PDF per language: the first one in the order set in OJS.
+            $chosen = array();
+            foreach ($pdfGalleys as $galley)
             {
-                $chosen = $galley;
-                break;
+                $locale = (string) $galley->getLocale();
+                if (!isset($chosen[$locale]))
+                {
+                    $chosen[$locale] = $galley;
+                }
             }
+            $chosen = array_values($chosen);
+        }
+        else
+        {
+            // One PDF: in the selected language (if a language is selected), otherwise in the
+            // language of the article; if there is no such PDF, the first one.
+            $wantedLocales = array($publication->getData('locale'));
+            if (!empty($selection) && $selection !== 'article')
+            {
+                array_unshift($wantedLocales, $selection);
+            }
+            $chosenGalley = null;
+            foreach ($wantedLocales as $wantedLocale)
+            {
+                foreach ($pdfGalleys as $galley)
+                {
+                    if ($galley->getLocale() === $wantedLocale)
+                    {
+                        $chosenGalley = $galley;
+                        break 2;
+                    }
+                }
+            }
+            $chosen = array($chosenGalley ?? $pdfGalleys[0]);
         }
 
         // "4-33" stays as is; anything that is not a Latin letter or digit becomes "-"
@@ -556,13 +593,18 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
         {
             $baseName = (string) $publication->getData('submissionId');
         }
-        $locale = (string) $chosen->getLocale();
 
-        return array(array(
-            'path' => Config::getVar('files', 'files_dir') . '/' . $chosen->getFile()->getData('path'),
-            'name' => $baseName . ($locale !== '' ? '_' . $locale : '') . '.pdf',
-            'locale' => $locale,
-        ));
+        $files = array();
+        foreach ($chosen as $galley)
+        {
+            $locale = (string) $galley->getLocale();
+            $files[] = array(
+                'path' => Config::getVar('files', 'files_dir') . '/' . $galley->getFile()->getData('path'),
+                'name' => $baseName . ($locale !== '' ? '_' . $locale : '') . '.pdf',
+                'locale' => $locale,
+            );
+        }
+        return $files;
     }
 
     /**

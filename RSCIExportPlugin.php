@@ -125,7 +125,8 @@ class RSCIExportPlugin extends ImportExportPlugin
         $exportFilter = array_shift($rsciExportFilters);
         $exportSettings = array ('isExportArtTypeFromSectionAbbrev' => $this->getSetting($context->getId(), 'exportArtTypeFromSectionAbbrev'),
                                     'isExportSections' => $this->getSetting($context->getId(), 'exportSections'),
-                                    'journalRSCITitleId' => $this->getSetting($context->getId(), 'journalRSCITitleId'));
+                                    'journalRSCITitleId' => $this->getSetting($context->getId(), 'journalRSCITitleId'),
+                                    'galleySelection' => $this->getSetting($context->getId(), 'galleySelection'));
         $exportFilter->SetExportSettings($exportSettings);
         libxml_use_internal_errors(true);
         $issueXml = $exportFilter->execute($issue, true);
@@ -176,11 +177,13 @@ class RSCIExportPlugin extends ImportExportPlugin
 //        $articles = $publishedArticleDao->getPublishedArticles($issue->getId());
 
 
+        // Setting "Full texts in the archive": the same value the XML filter gets in exportIssue().
+        $galleySelection = $this->getSetting($issue->getData('journalId'), 'galleySelection');
         foreach ($submissions as $submission)
         {
-            // Copy the article's full text from disk under the same name the XML refers to
+            // Copy the article's full texts from disk under the same names the XML refers to
             // (see getPublicationFilesToRSCI()).
-            foreach (ArticleRSCIXmlFilter::getPublicationFilesToRSCI($submission->getCurrentPublication()) as $file)
+            foreach (ArticleRSCIXmlFilter::getPublicationFilesToRSCI($submission->getCurrentPublication(), $galleySelection) as $file)
             {
                 $fileManager->copyFile($file['path'], $this->getExportPath() . $file['name']);
             }
