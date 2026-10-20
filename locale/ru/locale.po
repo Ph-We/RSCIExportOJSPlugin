@@ -58,3 +58,48 @@ msgstr "На языке статьи"
 
 msgid "plugins.importexport.rsciexport.settings.form.galleySelection.all"
 msgstr "Все языковые версии"
+
+msgid "plugins.importexport.rsciexport.report.title"
+msgstr "Отчёт о последней выгрузке"
+
+msgid "plugins.importexport.rsciexport.report.issue"
+msgstr "Выпуск: {$issue}, {$date}."
+
+msgid "plugins.importexport.rsciexport.report.noProblems"
+msgstr "Проблем не найдено: обложка и полные тексты всех статей попали в архив."
+
+msgid "plugins.importexport.rsciexport.report.notification"
+msgstr "При выгрузке найдено проблем: {$count}. Список — на странице модуля «Экспорт РИНЦ XML», вкладка «Выпуски»."
+
+msgid "plugins.importexport.rsciexport.problem.noCover"
+msgstr "У выпуска нет обложки."
+
+msgid "plugins.importexport.rsciexport.problem.coverFileMissing"
+msgstr "Обложка указана в OJS, но её файла ({$file}) нет на сервере — в архив она не попала."
+
+msgid "plugins.importexport.rsciexport.problem.noPdf"
+msgstr "{$article}: нет PDF-гранки — полный текст в архив не попал."
+
+msgid "plugins.importexport.rsciexport.problem.otherLanguage"
+msgstr "{$article}: нет PDF на языке «{$wanted}», взята PDF на языке «{$taken}». Проверьте язык статьи и язык гранок."
+
+msgid "plugins.importexport.rsciexport.problem.duplicateLanguage"
+msgstr "{$article}: несколько PDF-гранок на языке «{$language}» — в архив взята первая."
+
+msgid "plugins.importexport.rsciexport.problem.fileNotFound"
+msgstr "{$file}: файла нет на сервере ({$path}) — в архив он не попал."
+
+msgid "plugins.importexport.rsciexport.problem.copyFailed"
+msgstr "{$file}: не удалось скопировать в архив ({$reason})."
+
+msgid "plugins.importexport.rsciexport.problem.sameName"
+msgstr "{$article}: файл {$file} уже взят для статьи {$otherArticle} (одинаковые страницы?) — в архиве остался файл той статьи. Исправьте страницы."
+
+msgid "plugins.importexport.rsciexport.problem.article"
+msgstr "с. {$pages} «{$title}»"
+
+msgid "plugins.importexport.rsciexport.problem.articleNoPages"
+msgstr "«{$title}» (ID {$id}, страницы не указаны)"
+
+msgid "plugins.importexport.rsciexport.problem.galleyFileMissing"
+msgstr "{$article}: файла PDF-гранки нет на сервере ({$path}) — эта гранка пропущена."

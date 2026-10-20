@@ -527,12 +527,22 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
      *
      * @param $publication Publication
      * @param $selection string|null "article", a language code (e.g. "en") or "all"
+     * A PDF galley whose file is missing on the server is skipped (like a missing cover),
+     * so the XML never refers to a file that is not in the archive.
+     *
+     * @param $publication Publication
+     * @param $selection string|null "article", a language code (e.g. "en") or "all"
+     * @param $problems array|null if given, gets what the export report should mention:
+     *  ['type' => 'noPdf'], ['type' => 'fileMissing', 'path' => file on disk],
+     *  ['type' => 'otherLanguage', 'wanted' => [locales], 'taken' => locale],
+     *  ['type' => 'duplicateLanguage', 'locale' => locale]
      * @return array list of ['path' => file on disk, 'name' => name in the archive,
-     *  'locale' => galley language]; empty if the article has no PDF galley.
+     *  'locale' => galley language]; empty if the article has no usable PDF galley.
      */
-    static public function getPublicationFilesToRSCI($publication, $selection = null)
+    static public function getPublicationFilesToRSCI($publication, $selection = null, &$problems = null)
     {
         $pdfGalleys = array();
+        $hasMissingFiles = false;
         /** @var Galley $galley */
         foreach (Repo::galley()->dao->getByPublicationId($publication->getId()) as $galley)
         {
@@ -540,13 +550,27 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
             if ($file && ($file->getData('mimetype') === 'application/pdf'
                     || strtolower(pathinfo($file->getData('path'), PATHINFO_EXTENSION)) === 'pdf'))
             {
+                $path = Config::getVar('files', 'files_dir') . '/' . $file->getData('path');
+                if (!is_file($path))
+                {
+                    $problems[] = array('type' => 'fileMissing', 'path' => $path);
+                    $hasMissingFiles = true;
+                    continue;
+                }
                 $pdfGalleys[] = $galley;
             }
         }
         if (empty($pdfGalleys))
         {
+            if (!$hasMissingFiles)
+            {
+                $problems[] = array('type' => 'noPdf');
+            }
             return array();
         }
+
+        // How many PDF galleys each language has: two PDFs in one language are worth reporting.
+        $pdfCountByLocale = array_count_values(array_map(fn ($galley) => (string) $galley->getLocale(), $pdfGalleys));
 
         if ($selection === 'all')
         {
@@ -561,6 +585,13 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
                 }
             }
             $chosen = array_values($chosen);
+            foreach ($pdfCountByLocale as $locale => $count)
+            {
+                if ($count > 1)
+                {
+                    $problems[] = array('type' => 'duplicateLanguage', 'locale' => (string) $locale);
+                }
+            }
         }
         else
         {
@@ -583,7 +614,16 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
                     }
                 }
             }
-            $chosen = array($chosenGalley ?? $pdfGalleys[0]);
+            if (!$chosenGalley)
+            {
+                $chosenGalley = $pdfGalleys[0];
+                $problems[] = array('type' => 'otherLanguage', 'wanted' => $wantedLocales, 'taken' => (string) $chosenGalley->getLocale());
+            }
+            elseif ($pdfCountByLocale[(string) $chosenGalley->getLocale()] > 1)
+            {
+                $problems[] = array('type' => 'duplicateLanguage', 'locale' => (string) $chosenGalley->getLocale());
+            }
+            $chosen = array($chosenGalley);
         }
 
         // "4-33" stays as is; anything that is not a Latin letter or digit becomes "-"
