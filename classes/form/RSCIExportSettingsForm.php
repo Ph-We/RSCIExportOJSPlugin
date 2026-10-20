@@ -12,6 +12,7 @@
 namespace APP\plugins\importexport\rsciexport\classes\form;
 
 use APP\plugins\importexport\rsciexport\RSCIExportPlugin;
+use APP\template\TemplateManager;
 use PKP\form\Form;
 use PKP\form\validation\FormValidatorPost;
 use PKP\form\validation\FormValidatorCSRF;
@@ -79,6 +80,24 @@ class RSCIExportSettingsForm extends Form {
     }
 
     /**
+     * @copydoc Form::fetch()
+     *
+     * Adds the choices for "Full texts in the archive": in the language of the article,
+     * each submission language of the journal, or all language versions.
+     */
+    function fetch($request, $template = null, $display = false) {
+        $options = array('article' => __('plugins.importexport.rsciexport.settings.form.galleySelection.article'));
+        foreach ($request->getContext()->getSupportedSubmissionLocaleNames() as $locale => $name) {
+            $options[$locale] = $name;
+        }
+        $options['all'] = __('plugins.importexport.rsciexport.settings.form.galleySelection.all');
+
+        $templateMgr = TemplateManager::getManager($request);
+        $templateMgr->assign('galleySelectionOptions', $options);
+        return parent::fetch($request, $template, $display);
+    }
+
+    /**
      * @copydoc Form::readInputData()
      */
     function readInputData() {
@@ -109,7 +128,8 @@ class RSCIExportSettingsForm extends Form {
         return array(
             'exportSections' => 'bool',
             'exportArtTypeFromSectionAbbrev' => 'bool',
-            'journalRSCITitleId' => 'int'
+            'journalRSCITitleId' => 'int',
+            'galleySelection' => 'string'
         );
     }
 }

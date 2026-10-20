@@ -46,3 +46,15 @@ msgstr "Экспортировать разделы выпуска (исполь
 
 msgid "plugins.importexport.rsciexport.settings.form.exportArtTypeFromSectionAbbrev"
 msgstr "Экспортировать тип статьи по значению аббревиатуры раздела основного языка сайта. Аббревиатуры должны совпадать с типами статей, определенными в РИНЦ. Если опция не включена или тип не определен в РИНЦ, то статье будет присваиваться тип 'RAR' (Научная статья)."
+
+msgid "plugins.importexport.rsciexport.settings.form.galleySelection"
+msgstr "Полные тексты в архиве"
+
+msgid "plugins.importexport.rsciexport.settings.form.galleySelection.description"
+msgstr "Какие PDF-гранки статей класть в архив выгрузки. Если у статьи нет PDF на выбранном языке, берётся PDF на языке статьи, а если нет и её — первая PDF по порядку. «Все языковые версии» — по одной PDF на каждый язык."
+
+msgid "plugins.importexport.rsciexport.settings.form.galleySelection.article"
+msgstr "На языке статьи"
+
+msgid "plugins.importexport.rsciexport.settings.form.galleySelection.all"
+msgstr "Все языковые версии"

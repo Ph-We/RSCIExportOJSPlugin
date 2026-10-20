@@ -46,3 +46,15 @@ msgstr "Export section names."
 
 msgid "plugins.importexport.rsciexport.settings.form.exportArtTypeFromSectionAbbrev"
 msgstr "Export article type by section abbreviations. Abbreviations must match with article types declared by RSCI. If this option is disabled or types doesn't match, then the 'RAR' type will be assigned to the articles."
+
+msgid "plugins.importexport.rsciexport.settings.form.galleySelection"
+msgstr "Full texts in the archive"
+
+msgid "plugins.importexport.rsciexport.settings.form.galleySelection.description"
+msgstr "Which PDF galleys of the articles go into the export archive. If an article has no PDF in the selected language, the PDF in the language of the article is taken, otherwise the first PDF. \"All language versions\": one PDF for each language."
+
+msgid "plugins.importexport.rsciexport.settings.form.galleySelection.article"
+msgstr "In the language of the article"
+
+msgid "plugins.importexport.rsciexport.settings.form.galleySelection.all"
+msgstr "All language versions"
