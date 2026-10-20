@@ -931,22 +931,19 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
     }
 
     /**
+     * Sorts articles by their starting page.
+     *
+     * Articles with the same starting page, or without pages (they all count as page 0),
+     * are all kept, in their original order. Previously the starting page was used as an
+     * array key, so all but one of such articles silently disappeared from the XML.
+     *
      * @param $publications Publication[]
      * @return Publication[]
      */
     protected function _sortPublicationsByPages($publications)
     {
-        $startingPages = array();
-
-        foreach ($publications as $publication)
-        {
-            $startingPage = intval($publication->getStartingPage());
-            $startingPages += array($startingPage => $publication);
-        }
-
-        ksort($startingPages, SORT_NUMERIC);
-
-        return array_values($startingPages);
+        usort($publications, fn ($a, $b) => intval($a->getStartingPage()) <=> intval($b->getStartingPage()));
+        return $publications;
     }
 }
 
