@@ -27,6 +27,7 @@ use Matriphe\ISO639\ISO639;
 use APP\author\Author;
 use PKP\citation\Citation;
 use PKP\citation\CitationDAO;
+use PKP\config\Config;
 use PKP\context\Context;
 use PKP\core\Registry;
 use PKP\db\DAORegistry;
@@ -432,9 +433,14 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
         $furlNode->setAttribute('version', 'published');
         $filesNode->appendChild($furlNode);
 
-        $fileNode = $doc->createElement('file', $this->getPublicationFileNameToRSCI($publication));
-        $fileNode->setAttribute('desc', 'fullText');
-        $filesNode->appendChild($fileNode);
+        // Full text: the same file names that go into the archive (see getPublicationFilesToRSCI()).
+        // No PDF galley - no <file desc="fullText"> element.
+        foreach (self::getPublicationFilesToRSCI($publication) as $file)
+        {
+            $fileNode = $doc->createElement('file', $file['name']);
+            $fileNode->setAttribute('desc', 'fullText');
+            $filesNode->appendChild($fileNode);
+        }
 
         return $filesNode;
     }
@@ -480,21 +486,72 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
     }
 
     /**
-     * Converts galley filename to RSCI name format for archiving (example: "13-16.pdf").
+     * Chooses the article's full text for the archive and gives the name it gets there.
+     *
+     * Only PDF galleys that have a file are considered (PDF by file type, or by the .pdf
+     * extension for files migrated from old OJS versions with a generic type). HTML
+     * galleys and galleys that are only a link to another site are skipped: previously
+     * the first galley of any kind was taken, so an HTML file went to the archive instead
+     * of the PDF, and a link galley broke the whole export. Of the PDF galleys, the one in
+     * the language of the article is taken; if there is none, the first PDF galley in the
+     * order set in OJS.
+     *
+     * The name in the archive is "<pages>_<galley language>.pdf", e.g. "4-33_ru.pdf", or
+     * "<article ID>_<galley language>.pdf" if the pages are not filled in. Original file
+     * names are not used: different articles could have the same one (the files overwrote
+     * each other and an article got someone else's full text), and they contained the
+     * uploader's login, spaces and Cyrillic letters.
+     *
+     * Used both for the XML (<file desc="fullText">) and for building the archive, so the
+     * two always agree. Returns a list, so that more language versions can be added later
+     * without changing the callers.
+     *
      * @param $publication Publication
-     * @return string
+     * @return array list of ['path' => file on disk, 'name' => name in the archive,
+     *  'locale' => galley language]; empty if the article has no PDF galley.
      */
-    static public function getPublicationFileNameToRSCI($publication)
+    static public function getPublicationFilesToRSCI($publication)
     {
+        $pdfGalleys = array();
         /** @var Galley $galley */
-        $galleys = Repo::galley()->dao->getByPublicationId($publication->getId());
-        $galley = array_shift($galleys);
-        if (isset($galley))
+        foreach (Repo::galley()->dao->getByPublicationId($publication->getId()) as $galley)
         {
-            $fileName = $galley->getFile()->getData('name', Locale::getPrimaryLocale());
-            return $fileName;
+            $file = $galley->getFile();
+            if ($file && ($file->getData('mimetype') === 'application/pdf'
+                    || strtolower(pathinfo($file->getData('path'), PATHINFO_EXTENSION)) === 'pdf'))
+            {
+                $pdfGalleys[] = $galley;
+            }
         }
-        else return '';
+        if (empty($pdfGalleys))
+        {
+            return array();
+        }
+
+        $chosen = $pdfGalleys[0];
+        foreach ($pdfGalleys as $galley)
+        {
+            if ($galley->getLocale() === $publication->getData('locale'))
+            {
+                $chosen = $galley;
+                break;
+            }
+        }
+
+        // "4-33" stays as is; anything that is not a Latin letter or digit becomes "-"
+        // (e.g. an en dash in "4–33").
+        $baseName = trim(preg_replace('/[^0-9A-Za-z]+/', '-', (string) $publication->getData('pages')), '-');
+        if ($baseName === '')
+        {
+            $baseName = (string) $publication->getData('submissionId');
+        }
+        $locale = (string) $chosen->getLocale();
+
+        return array(array(
+            'path' => Config::getVar('files', 'files_dir') . '/' . $chosen->getFile()->getData('path'),
+            'name' => $baseName . ($locale !== '' ? '_' . $locale : '') . '.pdf',
+            'locale' => $locale,
+        ));
     }
 
     /**
