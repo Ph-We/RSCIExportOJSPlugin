@@ -764,9 +764,10 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
      */
     protected function _createSectionNode($doc, $publication, $langs)
     {
-        $sectionDAO = DAORegistry::getDAO('SectionDAO');
+        // SectionDAO no longer exists in OJS 3.4+; sections are read through the repository,
+        // as in _createArticleNode().
         /** @var Section $section */
-        $section = $sectionDAO->getById($publication->getData('sectionId'));
+        $section = Repo::section()->get($publication->getData('sectionId'));
         $sectionNode = $doc->createElement('section');
 
         foreach ($langs as $lang)
