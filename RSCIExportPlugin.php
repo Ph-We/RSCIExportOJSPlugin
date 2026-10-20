@@ -178,18 +178,11 @@ class RSCIExportPlugin extends ImportExportPlugin
 
         foreach ($submissions as $submission)
         {
-            /** @var Publication $publication */
-            $publication = $submission->getCurrentPublication();
-            /** @var Galley $galley */
-            $galleys = Repo::galley()->dao->getByPublicationId($publication->getId());
-            $galley = array_shift($galleys);
-            if (isset($galley))
+            // Copy the article's full text from disk under the same name the XML refers to
+            // (see getPublicationFilesToRSCI()).
+            foreach (ArticleRSCIXmlFilter::getPublicationFilesToRSCI($submission->getCurrentPublication()) as $file)
             {
-                $fileName = array_shift($galley->getFile()->getData('name'));
-                $articleFilePath = $galley->getFile()->getData('path');
-
-                if ($articleFilePath != "")
-                    copy(Config::getVar('files', 'files_dir') . '/' . $articleFilePath, $this->getExportPath() . $fileName);
+                $fileManager->copyFile($file['path'], $this->getExportPath() . $file['name']);
             }
         }
 
