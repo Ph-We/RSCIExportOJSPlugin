@@ -25,6 +25,21 @@ msgstr "Export Data"
 msgid "plugins.importexport.rsciexport.export.issue"
 msgstr "Export Issues"
 
+msgid "plugins.importexport.rsciexport.issueSelect.label"
+msgstr "Issue"
+
+msgid "plugins.importexport.rsciexport.issueSelect.published"
+msgstr "Published"
+
+msgid "plugins.importexport.rsciexport.issueSelect.unpublished"
+msgstr "Not published — for checking only"
+
+msgid "plugins.importexport.rsciexport.issueSelect.unpublishedLabel"
+msgstr "{$issue} — not published"
+
+msgid "plugins.importexport.rsciexport.issueSelect.choose"
+msgstr "— choose an issue —"
+
 msgid "plugins.importexport.rsciexport.export.selectIssue"
 msgstr "Select an Issue to export."
 
@@ -73,6 +88,9 @@ msgstr "Problems found during the export: {$count}. See the list on the \"RSCI X
 
 msgid "plugins.importexport.rsciexport.problem.noCover"
 msgstr "The issue has no cover."
+
+msgid "plugins.importexport.rsciexport.problem.issueNotPublished"
+msgstr "The issue is not published: the archive is for checking only, do not send it to RSCI."
 
 msgid "plugins.importexport.rsciexport.problem.coverFileMissing"
 msgstr "A cover is set in OJS, but its file ({$file}) is not on the server, so it is not in the archive."

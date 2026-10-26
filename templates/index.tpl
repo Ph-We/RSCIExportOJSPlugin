@@ -14,8 +14,9 @@
 		// Attach the JS file tab handler.
 		$(function() {ldelim}
 			$('#importExportTabs').pkpHandler('$.pkp.controllers.TabHandler');
-			$('#exportIssuesXmlForm').pkpHandler('$.pkp.controllers.form.FormHandler');
 			{rdelim});
+		{* The export form is a plain form: it only downloads the archive. With the OJS form handler
+		   the spinner next to the button kept spinning after the download. *}
 	</script>
 
 	<div id="importExportTabs">
@@ -33,8 +34,14 @@
 			<form id="exportIssuesXmlForm" class="pkp_form" action="{plugin_url path="exportIssue"}" method="post">
 				{csrf}
 				{fbvFormArea id="issuesXmlForm"}
-				{capture assign=issuesListGridUrl}{url router=$smarty.const.ROUTE_COMPONENT component="grid.issues.ExportableIssuesListGridHandler" op="fetchGrid" escape=false}{/capture}
-				{load_url_in_div id="issuesListGridContainer" url=$issuesListGridUrl}
+					{* One issue: published ones first (the newest preselected), unpublished ones at the bottom, marked *}
+					{fbvFormSection label="plugins.importexport.rsciexport.issueSelect.label" for="issueId"}
+						{if $selectedIssueId}
+							{fbvElement type="select" id="issueId" from=$issueOptions selected=$selectedIssueId translate=false size=$fbvStyles.size.LARGE required=true}
+						{else}
+							{fbvElement type="select" id="issueId" from=$issueOptions translate=false size=$fbvStyles.size.LARGE required=true defaultValue="" defaultLabel="plugins.importexport.rsciexport.issueSelect.choose"|translate}
+						{/if}
+					{/fbvFormSection}
 				{fbvFormButtons submitText="plugins.importexport.rsciexport.export.issue" hideCancel="true"}
 				{/fbvFormArea}
 			</form>
