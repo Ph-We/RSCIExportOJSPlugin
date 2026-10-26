@@ -231,6 +231,12 @@ class RSCIExportPlugin extends ImportExportPlugin
                 $problems[] = $this->_describeFileProblem($fileProblem, $article, $languageNames);
             }
 
+            // Pages are required by the RSCI schema, and Metafora rejects articles without them.
+            if (trim((string) $publication->getData('pages')) === '')
+            {
+                $problems[] = __('plugins.importexport.rsciexport.problem.noPages', array('article' => $article));
+            }
+
             // Article dates go into the XML (see _createDatesNode()); report what looks wrong.
             $dateSubmitted = $submission->getData('dateSubmitted');
             $datePublished = $publication->getData('datePublished');

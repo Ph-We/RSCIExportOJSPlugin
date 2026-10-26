@@ -805,9 +805,19 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
 
         foreach ($publications as $publication)
         {
-            //$submission = $submissionDao->getById($publishedArticle->getId());
+            // An article without pages would count as page 0 and give "0-..." for the issue: skip it
+            // (the export report warns about such articles).
+            if (trim((string) $publication->getData('pages')) === '')
+            {
+                continue;
+            }
             $startingPages[] = intval($publication->getStartingPage());
             $endingPages[] = intval($publication->getEndingPage());
+        }
+
+        if (empty($startingPages))
+        {
+            return '';
         }
 
         $issueStartingPage = strval(min($startingPages));

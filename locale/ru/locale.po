@@ -109,3 +109,6 @@ msgstr "{$article}: в OJS нет даты поступления статьи �
 
 msgid "plugins.importexport.rsciexport.problem.receivedAfterPublished"
 msgstr "{$article}: дата поступления ({$received}) позже даты публикации ({$published}). Проверьте даты статьи: возможно, это дата переноса статьи в OJS."
+
+msgid "plugins.importexport.rsciexport.problem.noPages"
+msgstr "{$article}: страницы статьи обязательны по схеме РИНЦ, а Метафора, по опыту других журналов, без них статью не принимает. Укажите страницы в OJS."
