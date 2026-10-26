@@ -225,7 +225,10 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
         //$articleNode->appendChild();    // TODO: create <text>
 
         $articleNode->appendChild($this->_createCodesNode($doc, $publication));
-        $articleNode->appendChild($this->_createKeywordsNode($doc, $publication, $langs));
+        if ($keywordsNode = $this->_createKeywordsNode($doc, $publication, $langs))
+        {
+            $articleNode->appendChild($keywordsNode);
+        }
         if ($referencesNode = $this->_createReferencesNode($doc, $publication))
         {
             $articleNode->appendChild($referencesNode);
@@ -365,9 +368,14 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
                 $keywordNode->appendChild($doc->createTextNode($keywordName));
                 $kwdGroup->appendChild($keywordNode);
             }
-            $keywordsNode->appendChild($kwdGroup);
+            // The RSCI schema does not allow an empty <kwdGroup>: skip a language without keywords.
+            if ($kwdGroup->hasChildNodes())
+            {
+                $keywordsNode->appendChild($kwdGroup);
+            }
         }
-        return $keywordsNode;
+        // ...nor an empty <keywords>: no keywords at all - no element.
+        return $keywordsNode->hasChildNodes() ? $keywordsNode : false;
     }
 
     /**
