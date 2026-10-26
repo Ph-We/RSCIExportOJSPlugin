@@ -61,31 +61,78 @@ class RSCIExportPlugin extends ImportExportPlugin
             case '':
                 // Report of the last export (see createIssueZip()), shown under the export form.
                 $templateMgr->assign('lastExportReport', $this->getSetting($journal->getId(), 'lastExportReport'));
+                // Drop-down list of the journal's issues for the export form.
+                $templateMgr->assign($this->_getIssueSelectData($journal));
                 $templateMgr->display($this->getTemplateResource('index.tpl'));
                 break;
             case 'exportIssue':
-                $issueIdsArr = (array) $request->getUserVar('selectedIssues');
-                if (count($issueIdsArr) > 1 || count($issueIdsArr) < 1)
+                // One issue from the drop-down list; it must belong to this journal.
+                $issueId = (int) $request->getUserVar('issueId');
+                $issue = $issueId ? Repo::issue()->get($issueId, $journal->getId()) : null;
+                if (!$issue)
                 {
                     $user = $request->getUser();
                     $notificationManager = new NotificationManager();
-                    $notificationManager->createTrivialNotification($user->getId(), Notification::NOTIFICATION_TYPE_ERROR, array('pluginName' => $this->getDisplayName(), 'contents' => "Choose one issue."));
+                    $notificationManager->createTrivialNotification($user->getId(), Notification::NOTIFICATION_TYPE_ERROR, array('pluginName' => $this->getDisplayName(), 'contents' => __('plugins.importexport.rsciexport.export.selectIssue')));
                     $request->redirectUrl(str_replace("exportIssue", "", $request->getRequestPath()));
                     break;
                 }
-                else {
-                    $issueId = $issueIdsArr[0];
-                    $exportXml = $this->exportIssue(
-                        $issueId,
-                        $request->getContext()
-                    );
-                    $this->_uploadZip($issueId, $exportXml);
-                    break;
-                }
+                $exportXml = $this->exportIssue(
+                    $issue->getId(),
+                    $request->getContext()
+                );
+                $this->_uploadZip($issue->getId(), $exportXml);
+                break;
             default:
                 $dispatcher = $request->getDispatcher();
                 throw new NotFoundHttpException();
         }
+    }
+
+    /**
+     * Issues for the drop-down list of the export form.
+     * Published issues come first, newest publication date on top; the newest one is preselected.
+     * Unpublished issues go to a separate group at the bottom and are marked in their own label
+     * (a closed list shows only the selected label, not its group): they can be exported to check
+     * the report before publication, but not to be sent to RSCI.
+     * @param $journal Journal
+     * @return array Template variables issueOptions (group label => [issue ID => label]) and selectedIssueId.
+     */
+    protected function _getIssueSelectData($journal)
+    {
+        $published = array();
+        $unpublished = array();
+        foreach (Repo::issue()->getCollector()->filterByContextIds([$journal->getId()])->getMany() as $issue)
+        {
+            if ($issue->getPublished())
+                $published[] = $issue;
+            else
+                $unpublished[] = $issue;
+        }
+        usort($published, function ($a, $b) {
+            return array($b->getDatePublished(), $b->getId()) <=> array($a->getDatePublished(), $a->getId());
+        });
+        // Unpublished issues have no publication date yet: by year, volume and number, newest on top.
+        usort($unpublished, function ($a, $b) {
+            return array((int) $b->getYear(), (int) $b->getVolume()) <=> array((int) $a->getYear(), (int) $a->getVolume())
+                ?: strnatcmp((string) $b->getNumber(), (string) $a->getNumber())
+                ?: $b->getId() <=> $a->getId();
+        });
+
+        $options = array();
+        foreach ($published as $issue)
+        {
+            $options[__('plugins.importexport.rsciexport.issueSelect.published')][$issue->getId()] = $issue->getIssueIdentification();
+        }
+        foreach ($unpublished as $issue)
+        {
+            $options[__('plugins.importexport.rsciexport.issueSelect.unpublished')][$issue->getId()] =
+                __('plugins.importexport.rsciexport.issueSelect.unpublishedLabel', array('issue' => $issue->getIssueIdentification()));
+        }
+        return array(
+            'issueOptions' => $options,
+            'selectedIssueId' => $published ? $published[0]->getId() : null,
+        );
     }
 
     /**
@@ -177,6 +224,8 @@ class RSCIExportPlugin extends ImportExportPlugin
         $journal = DAORegistry::getDAO('JournalDAO')->getById($issue->getJournalId());
         // What did not get into the archive and why: shown on the plugin page and in the console.
         $problems = array();
+        if (!$issue->getPublished())
+            $problems[] = __('plugins.importexport.rsciexport.problem.issueNotPublished');
 
         // Copy the cover from disk under the same name the XML refers to (see getIssueCoverToRSCI()).
         $cover = ArticleRSCIXmlFilter::getIssueCoverToRSCI($issue);
