@@ -230,6 +230,10 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
         {
             $articleNode->appendChild($referencesNode);
         }
+        if ($datesNode = $this->_createDatesNode($doc, $publication))
+        {
+            $articleNode->appendChild($datesNode);
+        }
         $articleNode->appendChild($this->_createFilesNode($doc, $publication));
 
         return $articleNode;
@@ -368,6 +372,33 @@ class ArticleRSCIXmlFilter extends PersistableFilter {
             $keywordsNode->appendChild($kwdGroup);
         }
         return $keywordsNode;
+    }
+
+    /**
+     * Dates of the article: when it was received (submitted in OJS) and when it was published,
+     * in the format required by the RSCI schema (journal.xsd): "dd.mm.yyyy".
+     * A date that is not set in OJS is left out; no dates - no <dates> element.
+     * @param $doc DOMDocument
+     * @param $publication Publication
+     * @return DOMElement|false
+     */
+    protected function _createDatesNode($doc, $publication)
+    {
+        $submission = Repo::submission()->get($publication->getData('submissionId'));
+        $dates = array(
+            'dateReceived' => $submission ? $submission->getData('dateSubmitted') : null,
+            'datePublication' => $publication->getData('datePublished'),
+        );
+
+        $datesNode = $doc->createElement('dates');
+        foreach ($dates as $element => $value)
+        {
+            if (!empty($value))
+            {
+                $datesNode->appendChild($doc->createElement($element, date('d.m.Y', strtotime($value))));
+            }
+        }
+        return $datesNode->hasChildNodes() ? $datesNode : false;
     }
 
     /**
