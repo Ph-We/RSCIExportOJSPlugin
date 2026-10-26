@@ -74,6 +74,18 @@ msgstr "На языке статьи"
 msgid "plugins.importexport.rsciexport.settings.form.galleySelection.all"
 msgstr "Все языковые версии"
 
+msgid "plugins.importexport.rsciexport.results.title"
+msgstr "Результаты выгрузки"
+
+msgid "plugins.importexport.rsciexport.results.ready"
+msgstr "Архив выпуска {$issue} готов."
+
+msgid "plugins.importexport.rsciexport.results.download"
+msgstr "Скачать архив"
+
+msgid "plugins.importexport.rsciexport.results.archiveGone"
+msgstr "Архив не найден: его хранят сутки после выгрузки. Выгрузите выпуск ещё раз."
+
 msgid "plugins.importexport.rsciexport.report.title"
 msgstr "Отчёт о последней выгрузке"
 
@@ -83,14 +95,11 @@ msgstr "Выпуск: {$issue}, {$date}."
 msgid "plugins.importexport.rsciexport.report.noProblems"
 msgstr "Проблем не найдено: обложка и полные тексты всех статей попали в архив."
 
-msgid "plugins.importexport.rsciexport.report.notification"
-msgstr "При выгрузке найдено проблем: {$count}. Список — на странице модуля «Экспорт РИНЦ XML», вкладка «Выпуски»."
-
 msgid "plugins.importexport.rsciexport.problem.noCover"
 msgstr "У выпуска нет обложки."
 
 msgid "plugins.importexport.rsciexport.problem.issueNotPublished"
-msgstr "Выпуск не опубликован: архив только для проверки, в РЦНИ его не отправляйте."
+msgstr "Выпуск не опубликован: архив только для проверки."
 
 msgid "plugins.importexport.rsciexport.problem.coverFileMissing"
 msgstr "Обложка указана в OJS, но её файла ({$file}) нет на сервере — в архив она не попала."

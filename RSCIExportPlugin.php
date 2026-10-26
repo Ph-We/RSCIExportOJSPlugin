@@ -15,6 +15,7 @@ use APP\journal\JournalDAO;
 use APP\publication\Publication;
 use APP\submission\Submission;
 use APP\template\TemplateManager;
+use DateTime;
 use PKP\config\Config;
 use PKP\context\Context;
 use PKP\core\Core;
@@ -61,27 +62,53 @@ class RSCIExportPlugin extends ImportExportPlugin
             case '':
                 // Report of the last export (see createIssueZip()), shown under the export form.
                 $templateMgr->assign('lastExportReport', $this->getSetting($journal->getId(), 'lastExportReport'));
+                $templateMgr->assign('reportTemplate', $this->getTemplateResource('report.tpl'));
                 // Drop-down list of the journal's issues for the export form.
                 $templateMgr->assign($this->_getIssueSelectData($journal));
                 $templateMgr->display($this->getTemplateResource('index.tpl'));
                 break;
+            // The export works like in the core "Native XML" plugin: the button opens an
+            // "Export results" tab, the tab builds the archive and shows the report of this export
+            // with a button to download the archive. So the report is seen right away, before the
+            // download (a download does not reload the page, so the page could not show it after).
+            case 'exportIssueBounce':
+                return $this->getBounceTab($request, __('plugins.importexport.rsciexport.results.title'), 'exportIssue',
+                    array('issueId' => (int) $request->getUserVar('issueId')));
             case 'exportIssue':
+                if (!$request->checkCSRF())
+                    throw new \Exception('CSRF mismatch!');
                 // One issue from the drop-down list; it must belong to this journal.
                 $issueId = (int) $request->getUserVar('issueId');
                 $issue = $issueId ? Repo::issue()->get($issueId, $journal->getId()) : null;
-                if (!$issue)
+                if ($issue)
                 {
-                    $user = $request->getUser();
-                    $notificationManager = new NotificationManager();
-                    $notificationManager->createTrivialNotification($user->getId(), Notification::NOTIFICATION_TYPE_ERROR, array('pluginName' => $this->getDisplayName(), 'contents' => __('plugins.importexport.rsciexport.export.selectIssue')));
-                    $request->redirectUrl(str_replace("exportIssue", "", $request->getRequestPath()));
-                    break;
+                    $exportXml = $this->exportIssue($issue->getId(), $request->getContext());
+                    $dateFilenamePart = new DateTime();
+                    $this->_keepZip($this->createIssueZip($issue->getId(), $exportXml), $issue, $journal, $dateFilenamePart);
+                    $templateMgr->assign(array(
+                        'issueId' => $issue->getId(),
+                        'issueIdentification' => $issue->getIssueIdentification(),
+                        'exportedFileDatePart' => $dateFilenamePart->format(self::EXPORT_FILE_DATE_PART_FORMAT),
+                        'problems' => $this->_exportProblems,
+                        'reportTemplate' => $this->getTemplateResource('report.tpl'),
+                    ));
                 }
-                $exportXml = $this->exportIssue(
-                    $issue->getId(),
-                    $request->getContext()
-                );
-                $this->_uploadZip($issue->getId(), $exportXml);
+                header('Content-Type: application/json');
+                return (new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('results.tpl'))))->getString();
+            case 'downloadExportFile':
+                // The "Download the archive" button of the results tab: the archive kept by _keepZip().
+                $issue = Repo::issue()->get((int) $request->getUserVar('issueId'), $journal->getId());
+                $date = DateTime::createFromFormat(self::EXPORT_FILE_DATE_PART_FORMAT, (string) $request->getUserVar('exportedFileDatePart'));
+                $fileManager = new FileManager();
+                if (!$request->checkCSRF() || !$issue || !$date ||
+                    !$fileManager->downloadByPath($this->_getKeptZipPath($issue, $journal, $date), 'application/zip', false, $this->_getZipDownloadName($issue)))
+                {
+                    // The archive is removed a day after the export (see _keepZip()), or the request is wrong.
+                    $notificationManager = new NotificationManager();
+                    $notificationManager->createTrivialNotification($request->getUser()->getId(), Notification::NOTIFICATION_TYPE_ERROR,
+                        array('contents' => __('plugins.importexport.rsciexport.results.archiveGone')));
+                    $request->redirectUrl($request->url(null, 'management', 'importexport', array('plugin', $this->getName())));
+                }
                 break;
             default:
                 $dispatcher = $request->getDispatcher();
@@ -185,27 +212,47 @@ class RSCIExportPlugin extends ImportExportPlugin
     }
 
     /**
-     * @param $issueId int
-     * @param $xml string XML file content
+     * Keeps the built archive until the editor downloads it from the results tab, and removes
+     * the temporary export directory. The archive is kept for a day, so the "Download" button
+     * can be pressed again; older archives are removed here, at the next export.
+     * @param $zipPath string archive built by createIssueZip()
+     * @param $issue Issue
+     * @param $journal Journal
+     * @param $dateFilenamePart DateTime the export time, part of the kept file name
      */
-    protected function _uploadZip($issueId, $xml)
+    protected function _keepZip($zipPath, $issue, $journal, $dateFilenamePart)
     {
         $fileManager = new FileManager();
-        $zipPath = $this->createIssueZip($issueId, $xml);
-
-        // A short pop-up note that the export had problems; the list itself is on the plugin page,
-        // because pop-up notes disappear after a few seconds and show plain text only.
-        if (!empty($this->_exportProblems))
+        foreach (glob(parent::getExportPath() . $this->getPluginSettingsPrefix() . '-*.zip') ?: array() as $oldZip)
         {
-            $request = Registry::get('request');
-            $notificationManager = new NotificationManager();
-            $notificationManager->createTrivialNotification($request->getUser()->getId(), Notification::NOTIFICATION_TYPE_WARNING,
-                array('contents' => __('plugins.importexport.rsciexport.report.notification', array('count' => count($this->_exportProblems)))));
+            if (filemtime($oldZip) < time() - 24 * 60 * 60)
+                $fileManager->deleteByPath($oldZip);
         }
-
-        // UPLOAD:
-        $fileManager->downloadByPath($zipPath);
+        $fileManager->copyFile($zipPath, $this->_getKeptZipPath($issue, $journal, $dateFilenamePart));
         $fileManager->rmtree($this->getExportPath());
+    }
+
+    /**
+     * Where _keepZip() keeps an archive: OJS temporary files directory,
+     * e.g. rsciexport-20261026-111723-issue37-1.zip (the same naming as the core export plugins).
+     * @param $issue Issue
+     * @param $journal Journal
+     * @param $dateFilenamePart DateTime
+     * @return string
+     */
+    protected function _getKeptZipPath($issue, $journal, $dateFilenamePart)
+    {
+        return $this->getExportFileName(parent::getExportPath(), 'issue' . $issue->getId(), $journal, '.zip', $dateFilenamePart);
+    }
+
+    /**
+     * Name of the downloaded archive, as before: issue-<number>-<year>.zip
+     * @param $issue Issue
+     * @return string
+     */
+    protected function _getZipDownloadName($issue)
+    {
+        return 'issue-' . $issue->getNumber() . '-' . $issue->getYear() . '.zip';
     }
 
     /**
