@@ -109,3 +109,6 @@ msgstr "{$article}: the article has no submission (received) date in OJS, so it 
 
 msgid "plugins.importexport.rsciexport.problem.receivedAfterPublished"
 msgstr "{$article}: the received date ({$received}) is later than the publication date ({$published}). Check the article dates: it may be the date the article was moved into OJS."
+
+msgid "plugins.importexport.rsciexport.problem.noPages"
+msgstr "{$article}: article pages are required by the RSCI schema, and Metafora reportedly rejects articles without them. Fill in the pages in OJS."
