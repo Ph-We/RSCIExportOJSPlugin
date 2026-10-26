@@ -103,3 +103,9 @@ msgstr "\"{$title}\" (ID {$id}, no pages)"
 
 msgid "plugins.importexport.rsciexport.problem.galleyFileMissing"
 msgstr "{$article}: the PDF galley file is not on the server ({$path}), so this galley was skipped."
+
+msgid "plugins.importexport.rsciexport.problem.noDateReceived"
+msgstr "{$article}: the article has no submission (received) date in OJS, so it is not in the XML."
+
+msgid "plugins.importexport.rsciexport.problem.receivedAfterPublished"
+msgstr "{$article}: the received date ({$received}) is later than the publication date ({$published}). Check the article dates: it may be the date the article was moved into OJS."

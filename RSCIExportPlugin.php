@@ -230,6 +230,23 @@ class RSCIExportPlugin extends ImportExportPlugin
             {
                 $problems[] = $this->_describeFileProblem($fileProblem, $article, $languageNames);
             }
+
+            // Article dates go into the XML (see _createDatesNode()); report what looks wrong.
+            $dateSubmitted = $submission->getData('dateSubmitted');
+            $datePublished = $publication->getData('datePublished');
+            if (empty($dateSubmitted))
+            {
+                $problems[] = __('plugins.importexport.rsciexport.problem.noDateReceived', array('article' => $article));
+            }
+            elseif (!empty($datePublished) && substr($dateSubmitted, 0, 10) > $datePublished)
+            {
+                // Typical for articles moved from older OJS versions: the "submitted" date is the date of the move.
+                $problems[] = __('plugins.importexport.rsciexport.problem.receivedAfterPublished', array(
+                    'article' => $article,
+                    'received' => date('d.m.Y', strtotime($dateSubmitted)),
+                    'published' => date('d.m.Y', strtotime($datePublished)),
+                ));
+            }
         }
 
         // ZIP:

@@ -103,3 +103,9 @@ msgstr "«{$title}» (ID {$id}, страницы не указаны)"
 
 msgid "plugins.importexport.rsciexport.problem.galleyFileMissing"
 msgstr "{$article}: файла PDF-гранки нет на сервере ({$path}) — эта гранка пропущена."
+
+msgid "plugins.importexport.rsciexport.problem.noDateReceived"
+msgstr "{$article}: в OJS нет даты поступления статьи — в XML она не передана."
+
+msgid "plugins.importexport.rsciexport.problem.receivedAfterPublished"
+msgstr "{$article}: дата поступления ({$received}) позже даты публикации ({$published}). Проверьте даты статьи: возможно, это дата переноса статьи в OJS."
