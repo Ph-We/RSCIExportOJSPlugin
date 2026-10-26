@@ -74,6 +74,18 @@ msgstr "In the language of the article"
 msgid "plugins.importexport.rsciexport.settings.form.galleySelection.all"
 msgstr "All language versions"
 
+msgid "plugins.importexport.rsciexport.results.title"
+msgstr "Export results"
+
+msgid "plugins.importexport.rsciexport.results.ready"
+msgstr "The archive of the issue {$issue} is ready."
+
+msgid "plugins.importexport.rsciexport.results.download"
+msgstr "Download the archive"
+
+msgid "plugins.importexport.rsciexport.results.archiveGone"
+msgstr "The archive is not found: it is kept for a day after the export. Export the issue again."
+
 msgid "plugins.importexport.rsciexport.report.title"
 msgstr "Last export report"
 
@@ -83,14 +95,11 @@ msgstr "Issue: {$issue}, {$date}."
 msgid "plugins.importexport.rsciexport.report.noProblems"
 msgstr "No problems found: the cover and the full texts of all articles are in the archive."
 
-msgid "plugins.importexport.rsciexport.report.notification"
-msgstr "Problems found during the export: {$count}. See the list on the \"RSCI XML Export\" plugin page, \"Issues\" tab."
-
 msgid "plugins.importexport.rsciexport.problem.noCover"
 msgstr "The issue has no cover."
 
 msgid "plugins.importexport.rsciexport.problem.issueNotPublished"
-msgstr "The issue is not published: the archive is for checking only, do not send it to RSCI."
+msgstr "The issue is not published: the archive is for checking only."
 
 msgid "plugins.importexport.rsciexport.problem.coverFileMissing"
 msgstr "A cover is set in OJS, but its file ({$file}) is not on the server, so it is not in the archive."

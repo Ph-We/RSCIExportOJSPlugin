@@ -14,9 +14,9 @@
 		// Attach the JS file tab handler.
 		$(function() {ldelim}
 			$('#importExportTabs').pkpHandler('$.pkp.controllers.TabHandler');
+			// The export button opens the "Export results" tab (as in the core "Native XML" plugin).
+			$('#exportIssuesXmlForm').pkpHandler('$.pkp.controllers.form.AjaxFormHandler');
 			{rdelim});
-		{* The export form is a plain form: it only downloads the archive. With the OJS form handler
-		   the spinner next to the button kept spinning after the download. *}
 	</script>
 
 	<div id="importExportTabs">
@@ -31,7 +31,7 @@
 		</div>
 
 		<div id="exportIssues-tab">
-			<form id="exportIssuesXmlForm" class="pkp_form" action="{plugin_url path="exportIssue"}" method="post">
+			<form id="exportIssuesXmlForm" class="pkp_form" action="{plugin_url path="exportIssueBounce"}" method="post">
 				{csrf}
 				{fbvFormArea id="issuesXmlForm"}
 					{* One issue: published ones first (the newest preselected), unpublished ones at the bottom, marked *}
@@ -51,15 +51,7 @@
 				<div id="rsciexportLastReport">
 					<h3>{translate key="plugins.importexport.rsciexport.report.title"}</h3>
 					<p>{translate key="plugins.importexport.rsciexport.report.issue" issue=$lastExportReport.issue|escape date=$lastExportReport.date|date_format:$datetimeFormatShort}</p>
-					{if $lastExportReport.problems}
-						<ul>
-							{foreach from=$lastExportReport.problems item=problem}
-								<li>{$problem|escape}</li>
-							{/foreach}
-						</ul>
-					{else}
-						<p>{translate key="plugins.importexport.rsciexport.report.noProblems"}</p>
-					{/if}
+					{include file=$reportTemplate problems=$lastExportReport.problems}
 				</div>
 			{/if}
 		</div>
